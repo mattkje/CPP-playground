@@ -16,40 +16,110 @@ class TetrisBlock : public QWidget {
     int gameHeight = 400;
     int currentObjectSize = 0;
 
+
+    struct BlockType {
+        int sizeX;
+        int sizeY;
+    };
+
+    struct Block {
+        QRect rect;
+        QColor color;
+        BlockType type;
+    };
+
+    Block currentBlock = {QRect(0, 0, 0, 0), Qt::black, {0, 0}};
+
+    std::vector<Block> blocks;
+
     void spawnNewBlock() {
-        blockType = std::rand() % 3;
+
+        // Randomly select a block type
+
+        blockType = std::rand() % 4;
         squareX = 75;
         squareY = 25;
     }
 
+    void saveBlock() {
+        QColor color;
+        if (blockType == 0) color = Qt::blue;
+        else if (blockType == 1) color = Qt::green;
+        else if (blockType == 2) color = Qt::red;
+        else if (blockType == 3) color = Qt::cyan;
+
+        // Add all squares of the current block with their color
+        if (blockType == 0) { // Square
+            blocks.push_back({QRect(squareX, squareY, size, size), color});
+            blocks.push_back({QRect(squareX + size, squareY, size, size), color});
+            blocks.push_back({QRect(squareX, squareY + size, size, size), color});
+            blocks.push_back({QRect(squareX + size, squareY + size, size, size), color});
+        } else if (blockType == 1) { // L-shape
+            blocks.push_back({QRect(squareX, squareY, size, size), color});
+            blocks.push_back({QRect(squareX, squareY + size, size, size), color});
+            blocks.push_back({QRect(squareX, squareY + 2 * size, size, size), color});
+            blocks.push_back({QRect(squareX + size, squareY + 2 * size, size, size), color});
+        } else if (blockType == 2) { // T-shape
+            blocks.push_back({QRect(squareX, squareY, size, size), color});
+            blocks.push_back({QRect(squareX + size, squareY, size, size), color});
+            blocks.push_back({QRect(squareX + 2 * size, squareY, size, size), color});
+            blocks.push_back({QRect(squareX + size, squareY + size, size, size), color});
+        } else if (blockType == 3) { // Vertical line
+            blocks.push_back({QRect(squareX, squareY, size, size), color});
+            blocks.push_back({QRect(squareX, squareY + size, size, size), color});
+            blocks.push_back({QRect(squareX, squareY + 2 * size, size, size), color});
+            blocks.push_back({QRect(squareX, squareY + 3 * size, size, size), color});
+        }
+    }
+
     void paintEvent(QPaintEvent *) override {
         QPainter painter(this);
-        painter.setBrush(Qt::blue);
+
         if (blockType == 0) { // Square
+            painter.setBrush(Qt::blue);
             painter.drawRect(squareX, squareY, size, size);
             painter.drawRect(squareX + size, squareY, size, size);
             painter.drawRect(squareX, squareY + size, size, size);
             painter.drawRect(squareX + size, squareY + size, size, size);
-            currentObjectSize = 2 * size;
+            currentBlock.type.sizeX = 2 * size;
+            currentBlock.type.sizeY = 2 * size;
         } else if (blockType == 1) { // L-shape
+            painter.setBrush(Qt::green);
             painter.drawRect(squareX, squareY, size, size);
             painter.drawRect(squareX, squareY + size, size, size);
             painter.drawRect(squareX, squareY + 2 * size, size, size);
             painter.drawRect(squareX + size, squareY + 2 * size, size, size);
-            currentObjectSize = 2 * size;
+            currentBlock.type.sizeX = 2 * size;
+            currentBlock.type.sizeY = 3 * size;
         } else if (blockType == 2) { // T-shape
+            painter.setBrush(Qt::red);
             painter.drawRect(squareX, squareY, size, size);
             painter.drawRect(squareX + size, squareY, size, size);
             painter.drawRect(squareX + 2 * size, squareY, size, size);
             painter.drawRect(squareX + size, squareY + size, size, size);
-            currentObjectSize = 3 * size;
+            currentBlock.type.sizeX = 3 * size;
+            currentBlock.type.sizeY = 2 * size;
+        } else if (blockType == 3) { // Vertical line
+            painter.setBrush(Qt::cyan);
+            painter.drawRect(squareX, squareY, size, size);
+            painter.drawRect(squareX, squareY + size, size, size);
+            painter.drawRect(squareX, squareY + 2 * size, size, size);
+            painter.drawRect(squareX, squareY + 3 * size, size, size);
+            currentBlock.type.sizeX = size;
+            currentBlock.type.sizeY = 4 * size;
+        }
+        painter.setPen(Qt::black);
+        for (const auto &block : blocks) {
+            painter.setBrush(block.color);
+            painter.drawRect(block.rect);
         }
     }
 
     void timerEvent(QTimerEvent *event) override {
         if (event->timerId() == gravityTimerId) {
             squareY += size;
-            if (squareY > height() - size * 4) {
+            if (squareY > height() - currentBlock.type.sizeY) {
+                saveBlock();
                 spawnNewBlock();
             }
             update();
@@ -58,7 +128,7 @@ class TetrisBlock : public QWidget {
 
     void keyPressEvent(QKeyEvent *event) override {
         if (event->key() == Qt::Key_Left && squareX > size) squareX -= size;
-        if (event->key() == Qt::Key_Right && squareX < gameWidth - currentObjectSize) squareX += size;
+        if (event->key() == Qt::Key_Right && squareX < gameWidth - currentBlock.type.sizeX) squareX += size;
         update();
     }
 
