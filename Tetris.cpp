@@ -10,17 +10,20 @@ class TetrisBlock : public QWidget {
     int squareY;
     const int size = 20;
     int gravityTimerId;
-    int blockType; // 0: square, 1: L, 2: T
+    // 0: Square, 1: L-shape, 2: T-shape, 3: Vertical line 4: S-shape, 5: Z-shape
 
-    int gameWidth = 250;
+    int gameWidth = 200;
     int gameHeight = 400;
+    const int borderSize = 200;
     int currentObjectSize = 0;
 
 
     struct BlockType {
-        int sizeX;
-        int sizeY;
+        int id;
+        std::array<std::array<int, 4>, 4> matrix = {};
+        int rotation = 0;
     };
+
 
     struct Block {
         QRect rect;
@@ -32,84 +35,186 @@ class TetrisBlock : public QWidget {
 
     std::vector<Block> blocks;
 
-    void spawnNewBlock() {
+    // list of all blocks
+    std::array<std::array<std::array<int, 4>, 4>, 6> allBlocks = {
+        {
+            // Square block
+            {
+                {
+                    {{0, 0, 0, 0}},
+                    {{0, 1, 1, 0}},
+                    {{0, 1, 1, 0}},
+                    {{0, 0, 0, 0}}
+                }
+            },
+            // L-shape block
+            {
+                {
+                    {{0, 1, 0, 0}},
+                    {{0, 1, 0, 0}},
+                    {{0, 1, 1, 0}},
+                    {{0, 0, 0, 0}}
+                }
+            },
+            // T-shape block
+            {
+                {
+                    {{0, 0, 0, 0}},
+                    {{0, 1, 0, 0}},
+                    {{1, 1, 1, 0}},
+                    {{0, 0, 0, 0}}
+                }
+            },
+            // Vertical line block
+            {
+                {
+                    {{0, 1, 0, 0}},
+                    {{0, 1, 0, 0}},
+                    {{0, 1, 0, 0}},
+                    {{0, 1, 0, 0}}
+                }
+            },
+            // S-shape block
+            {
+                {
+                    {{0, 0, 1, 0}},
+                    {{0, 1, 1, 0}},
+                    {{0, 1, 0, 0}},
+                    {{0, 0, 0, 0}}
+                }
+            },
+            // Z-shape block
+            {
+                {
+                    {{0, 1, 0, 0}},
+                    {{0, 1, 1, 0}},
+                    {{0, 0, 1, 0}},
+                    {{0, 0, 0, 0}}
+                }
+            }
+        }
+    };
 
+    void spawnNewBlock() {
         // Randomly select a block type
 
-        blockType = std::rand() % 4;
-        squareX = 75;
-        squareY = 25;
+        currentBlock.type.id = std::rand() % 6;
+        currentBlock.type.matrix = allBlocks[currentBlock.type.id];
+        squareX = (gameWidth) / 2;
+        squareY = 0;
     }
 
     void saveBlock() {
-        QColor color;
-        if (blockType == 0) color = Qt::blue;
-        else if (blockType == 1) color = Qt::green;
-        else if (blockType == 2) color = Qt::red;
-        else if (blockType == 3) color = Qt::cyan;
-
         // Add all squares of the current block with their color
-        if (blockType == 0) { // Square
-            blocks.push_back({QRect(squareX, squareY, size, size), color});
-            blocks.push_back({QRect(squareX + size, squareY, size, size), color});
-            blocks.push_back({QRect(squareX, squareY + size, size, size), color});
-            blocks.push_back({QRect(squareX + size, squareY + size, size, size), color});
-        } else if (blockType == 1) { // L-shape
-            blocks.push_back({QRect(squareX, squareY, size, size), color});
-            blocks.push_back({QRect(squareX, squareY + size, size, size), color});
-            blocks.push_back({QRect(squareX, squareY + 2 * size, size, size), color});
-            blocks.push_back({QRect(squareX + size, squareY + 2 * size, size, size), color});
-        } else if (blockType == 2) { // T-shape
-            blocks.push_back({QRect(squareX, squareY, size, size), color});
-            blocks.push_back({QRect(squareX + size, squareY, size, size), color});
-            blocks.push_back({QRect(squareX + 2 * size, squareY, size, size), color});
-            blocks.push_back({QRect(squareX + size, squareY + size, size, size), color});
-        } else if (blockType == 3) { // Vertical line
-            blocks.push_back({QRect(squareX, squareY, size, size), color});
-            blocks.push_back({QRect(squareX, squareY + size, size, size), color});
-            blocks.push_back({QRect(squareX, squareY + 2 * size, size, size), color});
-            blocks.push_back({QRect(squareX, squareY + 3 * size, size, size), color});
-        }
+        // Helper to save a block from a matrix
+        auto saveBlockFromMatrix = [&](int matrix[4][4], int rows, int cols, QColor color) {
+            for (int row = 0; row < rows; ++row) {
+                for (int col = 0; col < cols; ++col) {
+                    if (matrix[row][col] == 1) {
+                        blocks.push_back({QRect(squareX + col * size, squareY + row * size, size, size), color});
+                    }
+                }
+            }
+        };
+
+        QColor color;
+        if (currentBlock.type.id == 0) color = Qt::yellow;
+        else if (currentBlock.type.id == 1) color = Qt::blue;
+        else if (currentBlock.type.id == 2) color = Qt::magenta;
+        else if (currentBlock.type.id == 3) color = Qt::cyan;
+        else if (currentBlock.type.id == 4) color = Qt::green;
+        else if (currentBlock.type.id == 5) color = Qt::red;
+
+        int rows = 4;
+        int cols = 4;
+        int matrix[4][4] = {0};
+        for (int r = 0; r < rows; ++r)
+            for (int c = 0; c < cols; ++c)
+                matrix[r][c] = currentBlock.type.matrix[r][c];
+
+        saveBlockFromMatrix(matrix, rows, cols, color);
+    }
+
+
+    void checkForFullRows() {
+        bool foundFullRow;
+        do {
+            foundFullRow = false;
+            for (int row = (gameHeight / size) - 1; row >= 0; --row) {
+                int y = row * size;
+                int count = std::count_if(blocks.begin(), blocks.end(),
+                                          [y](const Block &b) { return b.rect.y() == y; });
+                if (count == 10) {
+                    // Remove all blocks in this row
+                    std::erase_if(blocks, [y](const Block &b) { return b.rect.y() == y; });
+                    // Move all blocks above down by one row
+                    for (auto &block : blocks) {
+                        if (block.rect.y() < y) {
+                            block.rect.moveTop(block.rect.y() + size);
+                        }
+                    }
+                    foundFullRow = true;
+                    break; // Start over, as rows have shifted
+                }
+            }
+        } while (foundFullRow);
     }
 
     void paintEvent(QPaintEvent *) override {
-        QPainter painter(this);
+       QPainter painter(this);
+       if (QPixmap bg("/Users/mattikjellstadli/Developer/Desktop Applications/CPP-Playground/background.png"); bg.isNull()) {
+           painter.fillRect(rect(), Qt::black);
+       } else {
+           painter.drawPixmap(rect(), bg);
+       }
 
-        if (blockType == 0) { // Square
-            painter.setBrush(Qt::blue);
-            painter.drawRect(squareX, squareY, size, size);
-            painter.drawRect(squareX + size, squareY, size, size);
-            painter.drawRect(squareX, squareY + size, size, size);
-            painter.drawRect(squareX + size, squareY + size, size, size);
-            currentBlock.type.sizeX = 2 * size;
-            currentBlock.type.sizeY = 2 * size;
-        } else if (blockType == 1) { // L-shape
-            painter.setBrush(Qt::green);
-            painter.drawRect(squareX, squareY, size, size);
-            painter.drawRect(squareX, squareY + size, size, size);
-            painter.drawRect(squareX, squareY + 2 * size, size, size);
-            painter.drawRect(squareX + size, squareY + 2 * size, size, size);
-            currentBlock.type.sizeX = 2 * size;
-            currentBlock.type.sizeY = 3 * size;
-        } else if (blockType == 2) { // T-shape
-            painter.setBrush(Qt::red);
-            painter.drawRect(squareX, squareY, size, size);
-            painter.drawRect(squareX + size, squareY, size, size);
-            painter.drawRect(squareX + 2 * size, squareY, size, size);
-            painter.drawRect(squareX + size, squareY + size, size, size);
-            currentBlock.type.sizeX = 3 * size;
-            currentBlock.type.sizeY = 2 * size;
-        } else if (blockType == 3) { // Vertical line
-            painter.setBrush(Qt::cyan);
-            painter.drawRect(squareX, squareY, size, size);
-            painter.drawRect(squareX, squareY + size, size, size);
-            painter.drawRect(squareX, squareY + 2 * size, size, size);
-            painter.drawRect(squareX, squareY + 3 * size, size, size);
-            currentBlock.type.sizeX = size;
-            currentBlock.type.sizeY = 4 * size;
+        QColor color;
+        QColor penColor;
+        switch (currentBlock.type.id) {
+            case 0: color = Qt::yellow;
+                penColor = Qt::darkYellow;
+                break;
+            case 1: color = Qt::blue;
+                penColor = Qt::darkBlue;
+                break;
+            case 2: color = Qt::magenta;
+                penColor = Qt::darkMagenta;
+                break;
+            case 3: color = Qt::cyan;
+                penColor = Qt::darkCyan;
+                break;
+            case 4: color = Qt::green;
+                penColor = Qt::darkGreen;
+                break;
+            case 5: color = Qt::red;
+                penColor = Qt::darkRed;
+                break;
+            default: color = Qt::black;
+                penColor = Qt::black;
+                break;
         }
-        painter.setPen(Qt::black);
-        for (const auto &block : blocks) {
+        painter.setBrush(color);
+        painter.setPen(penColor);
+        for (int row = 0; row < 4; ++row) {
+            for (int col = 0; col < 4; ++col) {
+                if (currentBlock.type.matrix[row][col] == 1) {
+                    painter.drawRect(squareX + col * size, squareY + row * size, size, size);
+                }
+            }
+        }
+
+        for (const auto &block: blocks) {
+            if (block.color == Qt::blue)
+                painter.setPen(Qt::darkBlue);
+            else if (block.color == Qt::green)
+                painter.setPen(Qt::darkGreen);
+            else if (block.color == Qt::red)
+                painter.setPen(Qt::darkRed);
+            else if (block.color == Qt::cyan)
+                painter.setPen(Qt::darkCyan);
+            else
+                painter.setPen(Qt::black);
+
             painter.setBrush(block.color);
             painter.drawRect(block.rect);
         }
@@ -117,28 +222,104 @@ class TetrisBlock : public QWidget {
 
     void timerEvent(QTimerEvent *event) override {
         if (event->timerId() == gravityTimerId) {
-            squareY += size;
-            if (squareY > height() - currentBlock.type.sizeY) {
+            int minRow = 4, maxRow = -1, minCol = 4, maxCol = -1;
+            for (int row = 0; row < 4; ++row) {
+                for (int col = 0; col < 4; ++col) {
+                    if (currentBlock.type.matrix[row][col] == 1) {
+                        if (row < minRow) minRow = row;
+                        if (row > maxRow) maxRow = row;
+                        if (col < minCol) minCol = col;
+                        if (col > maxCol) maxCol = col;
+                    }
+                }
+            }
+
+            bool willCollide = false;
+            // Check every occupied cell for collision below
+            for (int row = minRow; row <= maxRow; ++row) {
+                for (int col = minCol; col <= maxCol; ++col) {
+                    if (currentBlock.type.matrix[row][col] == 1) {
+                        int cellX = squareX + col * size;
+                        int cellY = squareY + row * size;
+                        // Check if moving down would go out of bounds
+                        if (cellY + size >= gameHeight) {
+                            willCollide = true;
+                            break;
+                        }
+                        // Check if moving down would overlap with any saved block
+                        for (const auto &block : blocks) {
+                            if (block.rect.x() == cellX && block.rect.y() == cellY + size) {
+                                willCollide = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (willCollide) break;
+                }
+                if (willCollide) break;
+            }
+
+            if (willCollide) {
                 saveBlock();
+                checkForFullRows();
                 spawnNewBlock();
+            } else {
+                squareY += size;
             }
             update();
         }
     }
 
-    void keyPressEvent(QKeyEvent *event) override {
-        if (event->key() == Qt::Key_Left && squareX > size) squareX -= size;
-        if (event->key() == Qt::Key_Right && squareX < gameWidth - currentBlock.type.sizeX) squareX += size;
-        update();
+    // Rotates a 4x4 matrix 90 degrees clockwise
+    void rotateMatrix(std::array<std::array<int, 4>, 4> &matrix, int &rows, int &cols) {
+        std::array<std::array<int, 4>, 4> temp = {};
+        for (int r = 0; r < rows; ++r)
+            for (int c = 0; c < cols; ++c)
+                temp[c][rows - 1 - r] = matrix[r][c];
+        int t = rows;
+        rows = cols;
+        cols = t;
+        for (int r = 0; r < rows; ++r)
+            for (int c = 0; c < cols; ++c)
+                matrix[r][c] = temp[r][c];
     }
+
+   void keyPressEvent(QKeyEvent *event) override {
+       int minRow = 4, maxRow = -1, minCol = 4, maxCol = -1;
+       for (int row = 0; row < 4; ++row) {
+           for (int col = 0; col < 4; ++col) {
+               if (currentBlock.type.matrix[row][col] == 1) {
+                   if (row < minRow) minRow = row;
+                   if (row > maxRow) maxRow = row;
+                   if (col < minCol) minCol = col;
+                   if (col > maxCol) maxCol = col;
+               }
+           }
+       }
+
+       if ((event->key() == Qt::Key_Left || event->key() == Qt::Key_A) && squareX + minCol * size > 0)
+           squareX -= size;
+       if ((event->key() == Qt::Key_Right || event->key() == Qt::Key_D) &&
+           squareX + (maxCol + 1) * size < gameWidth)
+           squareX += size;
+       if ((event->key() == Qt::Key_Down || event->key() == Qt::Key_S) &&
+           squareY + (maxRow + 1) * size < gameHeight)
+           squareY += size;
+
+       if (event->key() == Qt::Key_Space) {
+           int rows = 4, cols = 4;
+           rotateMatrix(currentBlock.type.matrix, rows, cols);
+       }
+       update();
+   }
 
 public:
     TetrisBlock() {
         setFocusPolicy(Qt::StrongFocus);
         std::srand(std::time(nullptr));
         spawnNewBlock();
-        gravityTimerId = startTimer(200);
-        setFixedSize(gameWidth+size, gameHeight+size);
+        gravityTimerId = startTimer(300);
+        setFixedSize(gameWidth + borderSize, gameHeight + borderSize);
     }
 };
 
