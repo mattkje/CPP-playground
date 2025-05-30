@@ -457,7 +457,7 @@ public:
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     TetrisBlock window;
-    window.setWindowTitle("Tetris Clone");
+    window.setWindowTitle("Stack The Things");
     // Center the window on the screen
     QRect screenGeometry = QGuiApplication::primaryScreen()->geometry();
     int x = (screenGeometry.width() - window.width()) / 2;
