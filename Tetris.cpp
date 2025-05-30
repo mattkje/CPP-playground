@@ -17,6 +17,8 @@ class TetrisBlock : public QWidget {
     const int borderSize = 200;
     int currentObjectSize = 0;
 
+    int score = 0;
+
 
     struct BlockType {
         int id;
@@ -137,6 +139,7 @@ class TetrisBlock : public QWidget {
 
 
     void checkForFullRows() {
+        int rowsCleared = 0;
         bool foundFullRow;
         do {
             foundFullRow = false;
@@ -145,7 +148,6 @@ class TetrisBlock : public QWidget {
                 int count = std::count_if(blocks.begin(), blocks.end(),
                                           [y](const Block &b) { return b.rect.y() == y; });
                 if (count == 10) {
-                    // Remove all blocks in this row
                     std::erase_if(blocks, [y](const Block &b) { return b.rect.y() == y; });
                     // Move all blocks above down by one row
                     for (auto &block : blocks) {
@@ -153,13 +155,22 @@ class TetrisBlock : public QWidget {
                             block.rect.moveTop(block.rect.y() + size);
                         }
                     }
+                    rowsCleared++;
                     foundFullRow = true;
                     break; // Start over, as rows have shifted
                 }
             }
         } while (foundFullRow);
-    }
 
+        // Scoring: 1 row=100, 2=300, 3=500, 4=800
+        switch (rowsCleared) {
+            case 1: score += 100; break;
+            case 2: score += 300; break;
+            case 3: score += 500; break;
+            case 4: score += 800; break;
+            default: break;
+        }
+    }
     void paintEvent(QPaintEvent *) override {
        QPainter painter(this);
        if (QPixmap bg("/Users/mattikjellstadli/Developer/Desktop Applications/CPP-Playground/background.png"); bg.isNull()) {
@@ -167,6 +178,10 @@ class TetrisBlock : public QWidget {
        } else {
            painter.drawPixmap(rect(), bg);
        }
+
+        painter.setPen(Qt::white);
+        painter.setFont(QFont("New Amsterdam", 30, QFont::Bold));
+        painter.drawText(240, 120 + painter.fontMetrics().ascent(), QString("Score: %1").arg(score));
 
         QColor color;
         QColor penColor;
@@ -194,29 +209,33 @@ class TetrisBlock : public QWidget {
                 break;
         }
         painter.setBrush(color);
-        painter.setPen(penColor);
+        painter.setPen(QPen(penColor, 2));
         for (int row = 0; row < 4; ++row) {
             for (int col = 0; col < 4; ++col) {
                 if (currentBlock.type.matrix[row][col] == 1) {
-                    painter.drawRect(squareX + col * size, squareY + row * size, size, size);
+                    painter.drawRoundedRect(squareX + col * size, squareY + row * size, size, size, 5, 5);
                 }
             }
         }
 
         for (const auto &block: blocks) {
             if (block.color == Qt::blue)
-                painter.setPen(Qt::darkBlue);
+                painter.setPen(QPen(Qt::darkBlue, 2));
             else if (block.color == Qt::green)
-                painter.setPen(Qt::darkGreen);
+                painter.setPen(QPen(Qt::darkGreen, 2));
             else if (block.color == Qt::red)
-                painter.setPen(Qt::darkRed);
+                painter.setPen(QPen(Qt::darkRed, 2));
             else if (block.color == Qt::cyan)
-                painter.setPen(Qt::darkCyan);
+                painter.setPen(QPen(Qt::darkCyan, 2));
+            else if (block.color == Qt::magenta)
+                painter.setPen(QPen(Qt::darkMagenta, 2));
+            else if (block.color == Qt::yellow)
+                painter.setPen(QPen(Qt::darkYellow, 2));
             else
-                painter.setPen(Qt::black);
+                painter.setPen(QPen(Qt::black, 2));
 
             painter.setBrush(block.color);
-            painter.drawRect(block.rect);
+            painter.drawRoundedRect(block.rect, 5, 5);
         }
     }
 
@@ -297,18 +316,73 @@ class TetrisBlock : public QWidget {
            }
        }
 
+       // Soft drop (Down/S) with collision check
+       if ((event->key() == Qt::Key_Down || event->key() == Qt::Key_S)) {
+           bool canMove = true;
+           for (int row = minRow; row <= maxRow && canMove; ++row) {
+               for (int col = minCol; col <= maxCol && canMove; ++col) {
+                   if (currentBlock.type.matrix[row][col] == 1) {
+                       int cellX = squareX + col * size;
+                       int cellY = squareY + row * size;
+                       if (cellY + size >= gameHeight) {
+                           canMove = false;
+                       }
+                       for (const auto &block : blocks) {
+                           if (block.rect.x() == cellX && block.rect.y() == cellY + size) {
+                               canMove = false;
+                           }
+                       }
+                   }
+               }
+           }
+           if (canMove) {
+               squareY += size;
+           }
+       }
+
+       // Move left
        if ((event->key() == Qt::Key_Left || event->key() == Qt::Key_A) && squareX + minCol * size > 0)
            squareX -= size;
+
+       // Move right
        if ((event->key() == Qt::Key_Right || event->key() == Qt::Key_D) &&
            squareX + (maxCol + 1) * size < gameWidth)
            squareX += size;
-       if ((event->key() == Qt::Key_Down || event->key() == Qt::Key_S) &&
-           squareY + (maxRow + 1) * size < gameHeight)
-           squareY += size;
 
+       // Rotate
        if (event->key() == Qt::Key_Space) {
            int rows = 4, cols = 4;
            rotateMatrix(currentBlock.type.matrix, rows, cols);
+       }
+
+       // Hard drop (Up/W)
+       if (event->key() == Qt::Key_Up || event->key() == Qt::Key_W) {
+           bool canMove = true;
+           while (canMove) {
+               for (int row = minRow; row <= maxRow && canMove; ++row) {
+                   for (int col = minCol; col <= maxCol && canMove; ++col) {
+                       if (currentBlock.type.matrix[row][col] == 1) {
+                           int cellX = squareX + col * size;
+                           int cellY = squareY + row * size;
+                           if (cellY + size >= gameHeight) {
+                               canMove = false;
+                           }
+                           for (const auto &block : blocks) {
+                               if (block.rect.x() == cellX && block.rect.y() == cellY + size) {
+                                   canMove = false;
+                               }
+                           }
+                       }
+                   }
+               }
+               if (canMove) {
+                   squareY += size;
+               }
+           }
+           // Place the block and spawn a new one
+           saveBlock();
+           checkForFullRows();
+           spawnNewBlock();
        }
        update();
    }
