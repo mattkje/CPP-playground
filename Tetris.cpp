@@ -2,6 +2,7 @@
 #include <QWidget>
 #include <QPainter>
 #include <QKeyEvent>
+#include <QMessageBox>
 #include <cstdlib>
 #include <ctime>
 
@@ -9,7 +10,6 @@ class TetrisBlock : public QWidget {
     int squareX;
     int squareY;
     const int size = 20;
-    int gravityTimerId;
     // 0: Square, 1: L-shape, 2: T-shape, 3: Vertical line 4: S-shape, 5: Z-shape
 
     int gameWidth = 200;
@@ -18,6 +18,9 @@ class TetrisBlock : public QWidget {
     int currentObjectSize = 0;
 
     int score = 0;
+    bool gameOver = false;
+    bool waitingToStart = true;
+    int gravityTimerId = 0;
 
 
     struct BlockType {
@@ -97,13 +100,49 @@ class TetrisBlock : public QWidget {
         }
     };
 
-    void spawnNewBlock() {
-        // Randomly select a block type
+    // In TetrisBlock class
+    void startGame() {
+        blocks.clear();
+        score = 0;
+        gameOver = false;
+        waitingToStart = false;
+        spawnNewBlock();
+        if (gravityTimerId != 0) {
+            killTimer(gravityTimerId);
+            gravityTimerId = 0;
+        }
+        gravityTimerId = startTimer(300);
+        update();
+    }
 
+    void spawnNewBlock() {
         currentBlock.type.id = std::rand() % 6;
         currentBlock.type.matrix = allBlocks[currentBlock.type.id];
         squareX = (gameWidth) / 2;
         squareY = 0;
+
+        // Check for collision at spawn
+        for (int row = 0; row < 4; ++row) {
+            for (int col = 0; col < 4; ++col) {
+                if (currentBlock.type.matrix[row][col] == 1) {
+                    int cellX = squareX + col * size;
+                    int cellY = squareY + row * size;
+                    for (const auto &block : blocks) {
+                        if (block.rect.x() == cellX && block.rect.y() == cellY) {
+                            gameOver = true;
+                            if (gravityTimerId != 0) {
+                                killTimer(gravityTimerId);
+                                gravityTimerId = 0;
+                            }
+                            QMessageBox::information(this, "Game Over", "Game Over!\nYour score: " + QString::number(score));
+                            waitingToStart = true;
+                            update();
+                            return;
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void saveBlock() {
@@ -178,6 +217,20 @@ class TetrisBlock : public QWidget {
        } else {
            painter.drawPixmap(rect(), bg);
        }
+
+
+        if (waitingToStart) {
+            QPixmap bg("/Users/mattikjellstadli/Developer/Desktop Applications/CPP-Playground/startBackground.png");
+            if (bg.isNull()) {
+                painter.fillRect(rect(), Qt::black);
+            } else {
+                painter.drawPixmap(rect(), bg);
+            }
+            painter.setPen(Qt::white);
+            painter.setFont(QFont("New Amsterdam", 30, QFont::Bold));
+            painter.drawText(rect(), Qt::AlignCenter, "Press Space to Start");
+            return;
+        }
 
         painter.setPen(Qt::white);
         painter.setFont(QFont("New Amsterdam", 30, QFont::Bold));
@@ -304,6 +357,11 @@ class TetrisBlock : public QWidget {
     }
 
    void keyPressEvent(QKeyEvent *event) override {
+        if (waitingToStart && event->key() == Qt::Key_Space) {
+            startGame();
+            return;
+        }
+        if (waitingToStart) return;
        int minRow = 4, maxRow = -1, minCol = 4, maxCol = -1;
        for (int row = 0; row < 4; ++row) {
            for (int col = 0; col < 4; ++col) {
@@ -391,8 +449,7 @@ public:
     TetrisBlock() {
         setFocusPolicy(Qt::StrongFocus);
         std::srand(std::time(nullptr));
-        spawnNewBlock();
-        gravityTimerId = startTimer(300);
+        waitingToStart = true;
         setFixedSize(gameWidth + borderSize, gameHeight + borderSize);
     }
 };
