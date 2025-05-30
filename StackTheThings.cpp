@@ -41,7 +41,7 @@ class TetrisBlock : public QWidget {
     std::vector<Block> blocks;
 
     // list of all blocks
-    std::array<std::array<std::array<int, 4>, 4>, 6> allBlocks = {
+    std::array<std::array<std::array<int, 4>, 4>, 7> allBlocks = {
         {
             // Square block
             {
@@ -96,6 +96,16 @@ class TetrisBlock : public QWidget {
                     {{0, 0, 1, 0}},
                     {{0, 0, 0, 0}}
                 }
+            },
+            // Add this as the 7th block in allBlocks (after Z-shape):
+            // J-shape (orange)
+            {
+                {
+                    {{0, 0, 1, 0}},
+                    {{0, 0, 1, 0}},
+                    {{0, 1, 1, 0}},
+                    {{0, 0, 0, 0}}
+                }
             }
         }
     };
@@ -116,7 +126,7 @@ class TetrisBlock : public QWidget {
     }
 
     void spawnNewBlock() {
-        currentBlock.type.id = std::rand() % 6;
+        currentBlock.type.id = std::rand() % 7;
         currentBlock.type.matrix = allBlocks[currentBlock.type.id];
         squareX = (gameWidth) / 2;
         squareY = 0;
@@ -127,14 +137,15 @@ class TetrisBlock : public QWidget {
                 if (currentBlock.type.matrix[row][col] == 1) {
                     int cellX = squareX + col * size;
                     int cellY = squareY + row * size;
-                    for (const auto &block : blocks) {
+                    for (const auto &block: blocks) {
                         if (block.rect.x() == cellX && block.rect.y() == cellY) {
                             gameOver = true;
                             if (gravityTimerId != 0) {
                                 killTimer(gravityTimerId);
                                 gravityTimerId = 0;
                             }
-                            QMessageBox::information(this, "Game Over", "Game Over!\nYour score: " + QString::number(score));
+                            QMessageBox::information(this, "Game Over",
+                                                     "Game Over!\nYour score: " + QString::number(score));
                             waitingToStart = true;
                             update();
                             return;
@@ -159,12 +170,13 @@ class TetrisBlock : public QWidget {
         };
 
         QColor color;
-        if (currentBlock.type.id == 0) color = Qt::yellow;
-        else if (currentBlock.type.id == 1) color = Qt::blue;
-        else if (currentBlock.type.id == 2) color = Qt::magenta;
-        else if (currentBlock.type.id == 3) color = Qt::cyan;
-        else if (currentBlock.type.id == 4) color = Qt::green;
-        else if (currentBlock.type.id == 5) color = Qt::red;
+       if (currentBlock.type.id == 0) color = QColor(255, 221, 51);
+       else if (currentBlock.type.id == 1) color = QColor(255, 167, 38);
+       else if (currentBlock.type.id == 2) color = QColor(186, 55, 200);
+       else if (currentBlock.type.id == 3) color = QColor(38, 198, 218);
+       else if (currentBlock.type.id == 4) color = QColor(14, 187, 106);
+       else if (currentBlock.type.id == 5) color = QColor(239, 83, 80);
+       else if (currentBlock.type.id == 6) color = QColor(30, 90, 180);
 
         int rows = 4;
         int cols = 4;
@@ -189,7 +201,7 @@ class TetrisBlock : public QWidget {
                 if (count == 10) {
                     std::erase_if(blocks, [y](const Block &b) { return b.rect.y() == y; });
                     // Move all blocks above down by one row
-                    for (auto &block : blocks) {
+                    for (auto &block: blocks) {
                         if (block.rect.y() < y) {
                             block.rect.moveTop(block.rect.y() + size);
                         }
@@ -203,20 +215,26 @@ class TetrisBlock : public QWidget {
 
         // Scoring: 1 row=100, 2=300, 3=500, 4=800
         switch (rowsCleared) {
-            case 1: score += 100; break;
-            case 2: score += 300; break;
-            case 3: score += 500; break;
-            case 4: score += 800; break;
+            case 1: score += 100;
+                break;
+            case 2: score += 300;
+                break;
+            case 3: score += 500;
+                break;
+            case 4: score += 800;
+                break;
             default: break;
         }
     }
+
     void paintEvent(QPaintEvent *) override {
-       QPainter painter(this);
-       if (QPixmap bg("/Users/mattikjellstadli/Developer/Desktop Applications/CPP-Playground/background.png"); bg.isNull()) {
-           painter.fillRect(rect(), Qt::black);
-       } else {
-           painter.drawPixmap(rect(), bg);
-       }
+        QPainter painter(this);
+        if (QPixmap bg("/Users/mattikjellstadli/Developer/Desktop Applications/CPP-Playground/background.png"); bg.
+            isNull()) {
+            painter.fillRect(rect(), Qt::black);
+        } else {
+            painter.drawPixmap(rect(), bg);
+        }
 
 
         if (waitingToStart) {
@@ -234,30 +252,41 @@ class TetrisBlock : public QWidget {
 
         painter.setPen(Qt::white);
         painter.setFont(QFont("New Amsterdam", 30, QFont::Bold));
-        painter.drawText(240, 120 + painter.fontMetrics().ascent(), QString("Score: %1").arg(score));
+        painter.drawText(250, 132 + painter.fontMetrics().ascent(), QString("Score: %1").arg(score));
 
         QColor color;
         QColor penColor;
         switch (currentBlock.type.id) {
-            case 0: color = Qt::yellow;
-                penColor = Qt::darkYellow;
+            case 0: // Yellow (Square)
+                color = QColor(255, 221, 51);      // Yellow
+                penColor = QColor(204, 170, 0);
                 break;
-            case 1: color = Qt::blue;
-                penColor = Qt::darkBlue;
+            case 1:
+                color = QColor(255, 167, 38);      // Orange
+                penColor = QColor(230, 120, 23);
                 break;
-            case 2: color = Qt::magenta;
-                penColor = Qt::darkMagenta;
+            case 2:
+                color = QColor(186, 55, 200);     // Purple
+                penColor = QColor(123, 31, 162);
                 break;
-            case 3: color = Qt::cyan;
-                penColor = Qt::darkCyan;
+            case 3:
+                color = QColor(38, 198, 218);      // Teal
+                penColor = QColor(0, 131, 143);
                 break;
-            case 4: color = Qt::green;
-                penColor = Qt::darkGreen;
+            case 4:
+                color = QColor(14, 187, 106);     // Green
+                penColor = QColor(46, 125, 50);
                 break;
-            case 5: color = Qt::red;
-                penColor = Qt::darkRed;
+            case 5:
+                color = QColor(239, 83, 80);       // Red
+                penColor = QColor(183, 28, 28);
                 break;
-            default: color = Qt::black;
+            case 6:
+                color = QColor(30, 90, 180);      // Blue
+                penColor = QColor(10, 40, 100);
+                break;
+            default:
+                color = Qt::black;
                 penColor = Qt::black;
                 break;
         }
@@ -272,18 +301,20 @@ class TetrisBlock : public QWidget {
         }
 
         for (const auto &block: blocks) {
-            if (block.color == Qt::blue)
-                painter.setPen(QPen(Qt::darkBlue, 2));
-            else if (block.color == Qt::green)
-                painter.setPen(QPen(Qt::darkGreen, 2));
-            else if (block.color == Qt::red)
-                painter.setPen(QPen(Qt::darkRed, 2));
-            else if (block.color == Qt::cyan)
-                painter.setPen(QPen(Qt::darkCyan, 2));
-            else if (block.color == Qt::magenta)
-                painter.setPen(QPen(Qt::darkMagenta, 2));
-            else if (block.color == Qt::yellow)
-                painter.setPen(QPen(Qt::darkYellow, 2));
+            if (block.color == QColor(255, 221, 51))
+                painter.setPen(QPen(QColor(204, 170, 0), 2));
+            else if (block.color == QColor(255, 167, 38))
+                painter.setPen(QPen(QColor(230, 120, 23), 2));
+            else if (block.color == QColor(186, 55, 200))
+                painter.setPen(QPen(QColor(123, 31, 162), 2));
+            else if (block.color == QColor(38, 198, 218))
+                painter.setPen(QPen(QColor(0, 131, 143), 2));
+            else if (block.color == QColor(14, 187, 106))
+                painter.setPen(QPen(QColor(46, 125, 50), 2));
+            else if (block.color == QColor(239, 83, 80))
+                painter.setPen(QPen(QColor(183, 28, 28), 2));
+            else if (block.color == QColor(30, 90, 180))
+                painter.setPen(QPen(QColor(10, 40, 100), 2));
             else
                 painter.setPen(QPen(Qt::black, 2));
 
@@ -319,7 +350,7 @@ class TetrisBlock : public QWidget {
                             break;
                         }
                         // Check if moving down would overlap with any saved block
-                        for (const auto &block : blocks) {
+                        for (const auto &block: blocks) {
                             if (block.rect.x() == cellX && block.rect.y() == cellY + size) {
                                 willCollide = true;
                                 break;
@@ -356,94 +387,94 @@ class TetrisBlock : public QWidget {
                 matrix[r][c] = temp[r][c];
     }
 
-   void keyPressEvent(QKeyEvent *event) override {
+    void keyPressEvent(QKeyEvent *event) override {
         if (waitingToStart && event->key() == Qt::Key_Space) {
             startGame();
             return;
         }
         if (waitingToStart) return;
-       int minRow = 4, maxRow = -1, minCol = 4, maxCol = -1;
-       for (int row = 0; row < 4; ++row) {
-           for (int col = 0; col < 4; ++col) {
-               if (currentBlock.type.matrix[row][col] == 1) {
-                   if (row < minRow) minRow = row;
-                   if (row > maxRow) maxRow = row;
-                   if (col < minCol) minCol = col;
-                   if (col > maxCol) maxCol = col;
-               }
-           }
-       }
+        int minRow = 4, maxRow = -1, minCol = 4, maxCol = -1;
+        for (int row = 0; row < 4; ++row) {
+            for (int col = 0; col < 4; ++col) {
+                if (currentBlock.type.matrix[row][col] == 1) {
+                    if (row < minRow) minRow = row;
+                    if (row > maxRow) maxRow = row;
+                    if (col < minCol) minCol = col;
+                    if (col > maxCol) maxCol = col;
+                }
+            }
+        }
 
-       // Soft drop (Down/S) with collision check
-       if ((event->key() == Qt::Key_Down || event->key() == Qt::Key_S)) {
-           bool canMove = true;
-           for (int row = minRow; row <= maxRow && canMove; ++row) {
-               for (int col = minCol; col <= maxCol && canMove; ++col) {
-                   if (currentBlock.type.matrix[row][col] == 1) {
-                       int cellX = squareX + col * size;
-                       int cellY = squareY + row * size;
-                       if (cellY + size >= gameHeight) {
-                           canMove = false;
-                       }
-                       for (const auto &block : blocks) {
-                           if (block.rect.x() == cellX && block.rect.y() == cellY + size) {
-                               canMove = false;
-                           }
-                       }
-                   }
-               }
-           }
-           if (canMove) {
-               squareY += size;
-           }
-       }
+        // Soft drop (Down/S) with collision check
+        if ((event->key() == Qt::Key_Down || event->key() == Qt::Key_S)) {
+            bool canMove = true;
+            for (int row = minRow; row <= maxRow && canMove; ++row) {
+                for (int col = minCol; col <= maxCol && canMove; ++col) {
+                    if (currentBlock.type.matrix[row][col] == 1) {
+                        int cellX = squareX + col * size;
+                        int cellY = squareY + row * size;
+                        if (cellY + size >= gameHeight) {
+                            canMove = false;
+                        }
+                        for (const auto &block: blocks) {
+                            if (block.rect.x() == cellX && block.rect.y() == cellY + size) {
+                                canMove = false;
+                            }
+                        }
+                    }
+                }
+            }
+            if (canMove) {
+                squareY += size;
+            }
+        }
 
-       // Move left
-       if ((event->key() == Qt::Key_Left || event->key() == Qt::Key_A) && squareX + minCol * size > 0)
-           squareX -= size;
+        // Move left
+        if ((event->key() == Qt::Key_Left || event->key() == Qt::Key_A) && squareX + minCol * size > 0)
+            squareX -= size;
 
-       // Move right
-       if ((event->key() == Qt::Key_Right || event->key() == Qt::Key_D) &&
-           squareX + (maxCol + 1) * size < gameWidth)
-           squareX += size;
+        // Move right
+        if ((event->key() == Qt::Key_Right || event->key() == Qt::Key_D) &&
+            squareX + (maxCol + 1) * size < gameWidth)
+            squareX += size;
 
-       // Rotate
-       if (event->key() == Qt::Key_Space) {
-           int rows = 4, cols = 4;
-           rotateMatrix(currentBlock.type.matrix, rows, cols);
-       }
+        // Rotate
+        if (event->key() == Qt::Key_Space) {
+            int rows = 4, cols = 4;
+            rotateMatrix(currentBlock.type.matrix, rows, cols);
+        }
 
-       // Hard drop (Up/W)
-       if (event->key() == Qt::Key_Up || event->key() == Qt::Key_W) {
-           bool canMove = true;
-           while (canMove) {
-               for (int row = minRow; row <= maxRow && canMove; ++row) {
-                   for (int col = minCol; col <= maxCol && canMove; ++col) {
-                       if (currentBlock.type.matrix[row][col] == 1) {
-                           int cellX = squareX + col * size;
-                           int cellY = squareY + row * size;
-                           if (cellY + size >= gameHeight) {
-                               canMove = false;
-                           }
-                           for (const auto &block : blocks) {
-                               if (block.rect.x() == cellX && block.rect.y() == cellY + size) {
-                                   canMove = false;
-                               }
-                           }
-                       }
-                   }
-               }
-               if (canMove) {
-                   squareY += size;
-               }
-           }
-           // Place the block and spawn a new one
-           saveBlock();
-           checkForFullRows();
-           spawnNewBlock();
-       }
-       update();
-   }
+        // Hard drop (Up/W)
+        if (event->key() == Qt::Key_Up || event->key() == Qt::Key_W) {
+            bool canMove = true;
+            while (canMove) {
+                for (int row = minRow; row <= maxRow && canMove; ++row) {
+                    for (int col = minCol; col <= maxCol && canMove; ++col) {
+                        if (currentBlock.type.matrix[row][col] == 1) {
+                            int cellX = squareX + col * size;
+                            int cellY = squareY + row * size;
+                            if (cellY + size >= gameHeight) {
+                                canMove = false;
+                            }
+                            for (const auto &block: blocks) {
+                                if (block.rect.x() == cellX && block.rect.y() == cellY + size) {
+                                    canMove = false;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (canMove) {
+                    squareY += size;
+                }
+            }
+            // Place the block and spawn a new one
+            saveBlock();
+            checkForFullRows();
+            spawnNewBlock();
+        }
+        update();
+    }
 
 public:
     TetrisBlock() {
